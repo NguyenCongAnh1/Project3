@@ -9,7 +9,11 @@ import com.udacity.catpoint.security.data.Sensor;
 
 import java.awt.image.BufferedImage;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.stream.Collectors;
 
 
 /**
@@ -24,6 +28,14 @@ public class SecurityService {
     private FakeImageService imageService;
     private SecurityRepository securityRepository;
     private Set<StatusListener> statusListeners = new HashSet<>();
+    private Boolean isCatDetected = false;
+
+    Set<Sensor> getActiveSensors() {
+        return getSensors()
+                .stream()
+                .filter(Sensor::getActive)
+                .collect(Collectors.toSet());
+    }
 
     public SecurityService(SecurityRepository securityRepository, FakeImageService imageService) {
         this.securityRepository = securityRepository;
@@ -37,11 +49,29 @@ public class SecurityService {
      * @param armingStatus
      */
     public void setArmingStatus(ArmingStatus armingStatus) {
+        if(isCatDetected && armingStatus == ArmingStatus.ARMED_HOME){
+            setAlarmStatus(AlarmStatus.ALARM);
+        }
+
         if (armingStatus == ArmingStatus.DISARMED) {
             setAlarmStatus(AlarmStatus.NO_ALARM);
+        } else if (List.of(ArmingStatus.ARMED_AWAY, ArmingStatus.ARMED_HOME).contains(armingStatus)) {
+            setFalseActivationStatusForSensors(this.getActiveSensors());
         }
 
         securityRepository.setArmingStatus(armingStatus);
+        statusListeners.forEach(sl -> sl.sensorStatusChanged());
+    }
+
+    private void setFalseActivationStatusForSensors(Set<Sensor> sensors) {
+        ConcurrentSkipListSet<Sensor> cloned = new ConcurrentSkipListSet<>(sensors);
+        Iterator<Sensor> sensorIterator = cloned.iterator();
+        //avoid the concurrentModification exception here
+        while (sensorIterator.hasNext()) {
+            Sensor sensor = sensorIterator.next();
+            sensor.setActive(true); //sensor can only be deactivated if it was active before
+            changeSensorActivationStatus(sensor, false);
+        }
     }
 
     /**
@@ -51,9 +81,10 @@ public class SecurityService {
      * @param cat True if a cat is detected, otherwise false.
      */
     private void catDetected(Boolean cat) {
+        isCatDetected = cat;
         if (cat && getArmingStatus() == ArmingStatus.ARMED_HOME) {
             setAlarmStatus(AlarmStatus.ALARM);
-        } else {
+        } else if (!cat && getSensors().stream().noneMatch(Sensor::getActive)) {
             setAlarmStatus(AlarmStatus.NO_ALARM);
         }
 

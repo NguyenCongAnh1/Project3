@@ -28,7 +28,10 @@ public class SecurityServiceTest extends TestCase {
     SecurityRepository securityRepository;
     @Mock
     FakeImageService imageService;
-    Sensor sensor_window = new Sensor("WINDOW", SensorType.WINDOW);
+    Sensor sensor_door = new Sensor("Door", SensorType.DOOR);
+    Sensor sensor_window = new Sensor("Window", SensorType.WINDOW);
+    Sensor sensor_motion = new Sensor("Motion", SensorType.MOTION);
+
     BufferedImage img = new BufferedImage(256, 256, BufferedImage.TYPE_INT_RGB);
     @BeforeEach
     void init() {
@@ -133,17 +136,35 @@ public class SecurityServiceTest extends TestCase {
     @Test
     @DisplayName("Test #9")
     public void systemDisarmed_setAlarmStatusNoAlarm(){
-        securityRepository.setArmingStatus(ArmingStatus.DISARMED);
+        securityService.setArmingStatus(ArmingStatus.DISARMED);
         verify(securityRepository).setAlarmStatus(AlarmStatus.NO_ALARM);
 
     }
 
-    public void testAddSensor() {
+
+    //#10 If the system is armed, reset all sensors to inactive.
+    @ParameterizedTest
+    @ValueSource( strings = {"ARMED_AWAY","ARMED_HOME"})
+    @DisplayName("Test #10")
+    public void systemArmed_allSensorsInactive(String alarmingStatus ) {
+        when(securityRepository.getArmingStatus()).thenReturn(ArmingStatus.DISARMED);
+        securityService.changeSensorActivationStatus(sensor_door, true);
+        securityService.changeSensorActivationStatus(sensor_window, true);
+        securityService.changeSensorActivationStatus(sensor_motion, true);
+        securityService.setArmingStatus(ArmingStatus.valueOf(alarmingStatus));
+        assertEquals(0, securityService.getActiveSensors().size());
+
+    }
+    //#11 If the system is armed-home while the camera shows a cat, set the alarm status to alarm.
+    @Test
+    @DisplayName("Test #11")
+    public void systemArmedHome_and_whileCameraShowsACat_setAlarmToAlarm() {
+        when(imageService.imageContainsCat(any(), anyFloat())).thenReturn(Boolean.TRUE);
+        when(securityRepository.getArmingStatus()).thenReturn(ArmingStatus.DISARMED);
+        securityService.processImage(img);
+        securityService.setArmingStatus(ArmingStatus.ARMED_HOME);
+
+        verify(securityRepository).setAlarmStatus(AlarmStatus.ALARM);
     }
 
-    public void testRemoveSensor() {
-    }
-
-    public void testGetArmingStatus() {
-    }
 }
