@@ -173,6 +173,12 @@ public class SecurityServiceTest extends TestCase {
         verify(securityRepository).setAlarmStatus(AlarmStatus.ALARM);
     }
 
+
+
+
+
+
+
     @Test
     @DisplayName("Test_getActiveSensors")
     public void sensorActivated_getActiveSensor_sensorAdded(){

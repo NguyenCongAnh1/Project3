@@ -2,7 +2,11 @@ package com.udacity.catpoint.security.data;
 
 
 import com.google.common.collect.ComparisonChain;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.InstanceCreator;
 
+import java.lang.reflect.Type;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -21,7 +25,7 @@ public class Sensor implements Comparable<Sensor> {
         this.sensorId = UUID.randomUUID();
         this.active = Boolean.FALSE;
     }
-
+    public Sensor() {}
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
