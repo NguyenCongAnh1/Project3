@@ -14,6 +14,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.awt.image.BufferedImage;
+import java.util.Set;
 
 import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.doReturn;
@@ -99,7 +100,6 @@ public class SecurityServiceTest extends TestCase {
         sensor_window.setActive(true);
         securityService.changeSensorActivationStatus(sensor_window,true);
         verify(securityRepository, times(1)).setAlarmStatus(AlarmStatus.ALARM);
-
     }
 
     //#6 A sensor is deactivated while already inactive, make no changes to the alarm state.
@@ -172,5 +172,34 @@ public class SecurityServiceTest extends TestCase {
         securityService.setArmingStatus(ArmingStatus.ARMED_HOME);
         verify(securityRepository).setAlarmStatus(AlarmStatus.ALARM);
     }
+
+    @Test
+    @DisplayName("Test_getActiveSensors")
+    public void sensorActivated_getActiveSensor_sensorAdded(){
+        doReturn(Set.of(sensor_door)).when(securityRepository).getSensors();
+        sensor_door.setActive(true);
+        assertEquals(1, securityService.getActiveSensors().size());
+    }
+    @Test
+    @DisplayName("Test_catDetected")
+    public void catNotFound_sensorInactive_setAlarmStatusNotBeCalled(){
+        when(imageService.imageContainsCat(any(), anyFloat())).thenReturn(false);
+        doReturn(Set.of(sensor_door)).when(securityRepository).getSensors();
+        sensor_door.setActive(false);
+        securityService.processImage(img);
+        verify(securityRepository, never()).setAlarmStatus(AlarmStatus.NO_ALARM);
+    }
+
+    @Test
+    @DisplayName("Test_setFalseActivationStatusForSensors")
+    public void Test_setFalseActivationStatusForSensors(){
+        doReturn(Set.of(sensor_door)).when(securityRepository).getSensors();
+        doReturn(AlarmStatus.NO_ALARM).when(securityRepository).getAlarmStatus();
+        sensor_door.setActive(true);
+        securityService.setArmingStatus(ArmingStatus.ARMED_AWAY);
+        assertEquals(Boolean.FALSE, sensor_door.getActive());
+
+    }
+
 
 }

@@ -96,7 +96,6 @@ public class SecurityService {
                 setAlarmStatus(AlarmStatus.NO_ALARM);
             }
         }
-
         statusListeners.forEach(sl -> sl.catDetected(cat));
     }
 
