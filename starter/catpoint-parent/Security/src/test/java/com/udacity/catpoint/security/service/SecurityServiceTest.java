@@ -59,6 +59,7 @@ public class SecurityServiceTest extends TestCase {
         doReturn(AlarmStatus.PENDING_ALARM).when(securityRepository).getAlarmStatus();
         securityService.changeSensorActivationStatus(sensor_window, true);
         verify(securityRepository).setAlarmStatus(AlarmStatus.ALARM);
+
     }
 
     //#3. Pending alarm and all sensors are inactive, return to no alarm state.
