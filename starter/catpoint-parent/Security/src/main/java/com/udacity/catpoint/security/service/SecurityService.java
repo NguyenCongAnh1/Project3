@@ -31,10 +31,13 @@ public class SecurityService {
     private Boolean isCatDetected = false;
 
     Set<Sensor> getActiveSensors() {
-        return getSensors()
-                .stream()
-                .filter(Sensor::getActive)
-                .collect(Collectors.toSet());
+        Set<Sensor> activeSensors = new HashSet<>();
+        for (Sensor sensor : getSensors()) {
+            if (sensor.getActive()) {
+                activeSensors.add(sensor);
+            }
+        }
+        return activeSensors;
     }
 
     public SecurityService(SecurityRepository securityRepository, FakeImageService imageService) {
@@ -55,8 +58,9 @@ public class SecurityService {
 
         if (armingStatus == ArmingStatus.DISARMED) {
             setAlarmStatus(AlarmStatus.NO_ALARM);
-        } else if (List.of(ArmingStatus.ARMED_AWAY, ArmingStatus.ARMED_HOME).contains(armingStatus)) {
-            setFalseActivationStatusForSensors(this.getActiveSensors());
+        }
+        if( armingStatus == ArmingStatus.ARMED_AWAY || armingStatus == ArmingStatus.ARMED_HOME){
+            setFalseActivationStatusForSensors(getActiveSensors());
         }
 
         securityRepository.setArmingStatus(armingStatus);
@@ -64,14 +68,10 @@ public class SecurityService {
     }
 
     private void setFalseActivationStatusForSensors(Set<Sensor> sensors) {
-        ConcurrentSkipListSet<Sensor> cloned = new ConcurrentSkipListSet<>(sensors);
-        Iterator<Sensor> sensorIterator = cloned.iterator();
-        //avoid the concurrentModification exception here
-        while (sensorIterator.hasNext()) {
-            Sensor sensor = sensorIterator.next();
-            sensor.setActive(true); //sensor can only be deactivated if it was active before
+        sensors.forEach(sensor -> {
+            sensor.setActive(true);
             changeSensorActivationStatus(sensor, false);
-        }
+        });
     }
 
     /**
@@ -81,11 +81,20 @@ public class SecurityService {
      * @param cat True if a cat is detected, otherwise false.
      */
     private void catDetected(Boolean cat) {
+        boolean noInactiveSensors = true;
         isCatDetected = cat;
         if (cat && getArmingStatus() == ArmingStatus.ARMED_HOME) {
             setAlarmStatus(AlarmStatus.ALARM);
-        } else if (!cat && getSensors().stream().noneMatch(Sensor::getActive)) {
-            setAlarmStatus(AlarmStatus.NO_ALARM);
+        } else if (!cat) {
+            for (Sensor sensor : getSensors()) {
+                if (!sensor.getActive()) {
+                    noInactiveSensors = false;
+                    break;
+                }
+            }
+            if(noInactiveSensors){
+                setAlarmStatus(AlarmStatus.NO_ALARM);
+            }
         }
 
         statusListeners.forEach(sl -> sl.catDetected(cat));

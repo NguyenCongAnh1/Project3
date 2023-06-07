@@ -8,17 +8,15 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
-import org.mockito.internal.matchers.Any;
 import org.mockito.junit.jupiter.MockitoExtension;
-import software.amazon.awssdk.services.rekognition.endpoints.internal.Value;
 
 import java.awt.image.BufferedImage;
 
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.doReturn;
 
 
 @ExtendWith(MockitoExtension.class)
@@ -44,9 +42,9 @@ public class SecurityServiceTest extends TestCase {
     @ParameterizedTest
     @ValueSource( strings = {"ARMED_AWAY","ARMED_HOME"})
     @DisplayName("Test #1")
-    public void alarmArmed_sensorAcivated_alarmStatusPuttoPending(String armingStatus){
-        when(securityRepository.getArmingStatus()).thenReturn(ArmingStatus.valueOf(armingStatus));
-        when(securityRepository.getAlarmStatus()).thenReturn(AlarmStatus.NO_ALARM);
+    public void alarmArmed_sensorActivated_alarmStatusPutToPending(String armingStatus){
+        doReturn(ArmingStatus.valueOf(armingStatus)).when(securityRepository).getArmingStatus();
+        doReturn(AlarmStatus.NO_ALARM).when(securityRepository).getAlarmStatus();
         securityService.changeSensorActivationStatus(sensor_window, true);
         verify(securityRepository).setAlarmStatus(AlarmStatus.PENDING_ALARM);
     }
@@ -56,9 +54,9 @@ public class SecurityServiceTest extends TestCase {
     @ParameterizedTest
     @ValueSource( strings = {"ARMED_AWAY","ARMED_HOME"})
     @DisplayName("Test #2")
-    public void alarmArmed_sensorAcivated_alarmStatusPuttoPending_alarmStatusToAlarm(String alArmingStatus) {
-        when(securityRepository.getArmingStatus()).thenReturn(ArmingStatus.valueOf(alArmingStatus));
-        when(securityRepository.getAlarmStatus()).thenReturn(AlarmStatus.PENDING_ALARM);
+    public void alarmArmed_sensorActivated_alarmStatusPutToPending_alarmStatusToAlarm(String alArmingStatus) {
+        doReturn(ArmingStatus.valueOf(alArmingStatus)).when(securityRepository).getArmingStatus();
+        doReturn(AlarmStatus.PENDING_ALARM).when(securityRepository).getAlarmStatus();
         securityService.changeSensorActivationStatus(sensor_window, true);
         verify(securityRepository).setAlarmStatus(AlarmStatus.ALARM);
     }
@@ -68,31 +66,35 @@ public class SecurityServiceTest extends TestCase {
 //    @ValueSource( strings = {"ARMED_AWAY","ARMED_HOME"})
     @Test
     @DisplayName("Test #3")
-    public void pendingAlram_allSensorsInactived_returnNoAlarmState() {
-
+    public void pendingAlarmed_allSensorsInactived_returnNoAlarmState() {
 //        when(securityRepository.getArmingStatus()).thenReturn(ArmingStatus.);
         when(securityRepository.getAlarmStatus()).thenReturn(AlarmStatus.PENDING_ALARM);
         sensor_window.setActive(false);
+        sensor_door.setActive(false);
+        sensor_motion.setActive(false);
         securityService.changeSensorActivationStatus(sensor_window, false);
         verify(securityRepository, times(1)).setAlarmStatus(AlarmStatus.NO_ALARM);
     }
 
     //#4 Alarm is active, change in sensor state should not affect the alarm state.
-    @ParameterizedTest
-    @ValueSource( booleans = {true, false})
+    @Test
     @DisplayName("Test #4")
-    public void testSetAlarmStatus(boolean sensorStatus) {
-        when(securityRepository.getAlarmStatus()).thenReturn(AlarmStatus.ALARM);
-        securityService.changeSensorActivationStatus(sensor_window, sensorStatus);
+    public void alarmActivated_changeSensorState_notAffectAlarmState() {
+        doReturn(AlarmStatus.ALARM).when(securityRepository).getAlarmStatus();
+        securityService.changeSensorActivationStatus(sensor_window, true);
         assertEquals(securityService.getAlarmStatus(), AlarmStatus.ALARM);
-    }
 
+        doReturn(AlarmStatus.ALARM).when(securityRepository).getAlarmStatus();
+        securityService.changeSensorActivationStatus(sensor_window, false);
+        assertEquals(securityService.getAlarmStatus(), AlarmStatus.ALARM);
+
+    }
 
     //#5 A sensor is activated while already active and the system is in pending state, change it to alarm state.
     @Test
     @DisplayName("Test #5")
-    public void sensorActivated_whileAlreadyActive_systemPending_changToAlarmState() {
-        when(securityRepository.getAlarmStatus()).thenReturn(AlarmStatus.PENDING_ALARM);
+    public void sensorActivated_whileAlreadyActive_systemPending_changeToAlarmState() {
+        doReturn(AlarmStatus.PENDING_ALARM).when(securityRepository).getAlarmStatus();
         sensor_window.setActive(true);
         securityService.changeSensorActivationStatus(sensor_window,true);
         verify(securityRepository, times(1)).setAlarmStatus(AlarmStatus.ALARM);
@@ -100,14 +102,19 @@ public class SecurityServiceTest extends TestCase {
     }
 
     //#6 A sensor is deactivated while already inactive, make no changes to the alarm state.
-    @ParameterizedTest
-    @ValueSource(strings = {"ALARM","NO_ALARM"})
+   @Test
     @DisplayName("Test #6")
-    public void sensorDeactivated_whileAlreadyInactive_noChangeAlarmState(String alarmStatus) {
+    public void sensorDeactivated_whileAlreadyInactive_noChangeAlarmState() {
         sensor_window.setActive(Boolean.FALSE);
-        when(securityRepository.getAlarmStatus()).thenReturn(AlarmStatus.valueOf(alarmStatus));
+        doReturn(AlarmStatus.ALARM).when(securityRepository).getAlarmStatus();
         securityService.changeSensorActivationStatus(sensor_window,false);
         verify(securityRepository, never()).setAlarmStatus(any(AlarmStatus.class));
+
+        sensor_window.setActive(Boolean.FALSE);
+        doReturn(AlarmStatus.NO_ALARM).when(securityRepository).getAlarmStatus();
+        securityService.changeSensorActivationStatus(sensor_window,false);
+        verify(securityRepository, never()).setAlarmStatus(any(AlarmStatus.class));
+
     }
 
 
@@ -115,11 +122,11 @@ public class SecurityServiceTest extends TestCase {
     @Test
     @DisplayName("Test #7")
     public void identifiesAnImageACat_whileSystemArmedHome_putSystemIntoAlarm() {
-
-        when(imageService.imageContainsCat(any(), ArgumentMatchers.anyFloat())).thenReturn(true);
-        when(securityRepository.getArmingStatus()).thenReturn(ArmingStatus.ARMED_HOME);
+        securityRepository.setArmingStatus(ArmingStatus.ARMED_HOME);
+        doReturn(true).when(imageService).imageContainsCat(any(), anyFloat());
+        doReturn(ArmingStatus.ARMED_HOME).when(securityRepository).getArmingStatus();
         securityService.processImage(img);
-        verify(securityRepository).setAlarmStatus(AlarmStatus.ALARM);
+        verify(securityRepository, times(1)).setAlarmStatus(AlarmStatus.ALARM);
     }
 
     //#8 If the image service identifies an image that does not contain a cat, change the status to no alarm as long as the sensors are not active.
@@ -153,17 +160,15 @@ public class SecurityServiceTest extends TestCase {
         securityService.changeSensorActivationStatus(sensor_motion, true);
         securityService.setArmingStatus(ArmingStatus.valueOf(alarmingStatus));
         assertEquals(0, securityService.getActiveSensors().size());
-
     }
     //#11 If the system is armed-home while the camera shows a cat, set the alarm status to alarm.
     @Test
     @DisplayName("Test #11")
     public void systemArmedHome_and_whileCameraShowsACat_setAlarmToAlarm() {
-        when(imageService.imageContainsCat(any(), anyFloat())).thenReturn(Boolean.TRUE);
-        when(securityRepository.getArmingStatus()).thenReturn(ArmingStatus.DISARMED);
+        doReturn(true).when(imageService).imageContainsCat(any(), anyFloat());
+        doReturn(ArmingStatus.DISARMED).when(securityRepository).getArmingStatus();
         securityService.processImage(img);
         securityService.setArmingStatus(ArmingStatus.ARMED_HOME);
-
         verify(securityRepository).setAlarmStatus(AlarmStatus.ALARM);
     }
 
