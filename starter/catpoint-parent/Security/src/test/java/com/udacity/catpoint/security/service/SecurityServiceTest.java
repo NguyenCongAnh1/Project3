@@ -176,9 +176,6 @@ public class SecurityServiceTest extends TestCase {
 
 
 
-
-
-
     @Test
     @DisplayName("Test_getActiveSensors")
     public void sensorActivated_getActiveSensor_sensorAdded(){

@@ -52,14 +52,14 @@ public class SecurityService {
      * @param armingStatus
      */
     public void setArmingStatus(ArmingStatus armingStatus) {
-        if(isCatDetected && armingStatus == ArmingStatus.ARMED_HOME){
+        if (isCatDetected && armingStatus == ArmingStatus.ARMED_HOME) {
             setAlarmStatus(AlarmStatus.ALARM);
         }
 
         if (armingStatus == ArmingStatus.DISARMED) {
             setAlarmStatus(AlarmStatus.NO_ALARM);
         }
-        if( armingStatus == ArmingStatus.ARMED_AWAY || armingStatus == ArmingStatus.ARMED_HOME){
+        if (armingStatus == ArmingStatus.ARMED_AWAY || armingStatus == ArmingStatus.ARMED_HOME) {
             setFalseActivationStatusForSensors(getActiveSensors());
         }
 
@@ -92,7 +92,7 @@ public class SecurityService {
                     break;
                 }
             }
-            if(noInactiveSensors){
+            if (noInactiveSensors) {
                 setAlarmStatus(AlarmStatus.NO_ALARM);
             }
         }
