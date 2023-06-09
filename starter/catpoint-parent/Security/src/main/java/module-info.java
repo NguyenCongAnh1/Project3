@@ -10,4 +10,5 @@ module Security {
     exports com.udacity.catpoint.security.application;
     exports com.udacity.catpoint.security.service;
     opens com.udacity.catpoint.security.data to com.google.gson;
+    exports com.udacity.catpoint.security;
 }

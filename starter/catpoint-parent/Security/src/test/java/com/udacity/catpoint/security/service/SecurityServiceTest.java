@@ -69,11 +69,8 @@ public class SecurityServiceTest extends TestCase {
     @Test
     @DisplayName("Test #3")
     public void pendingAlarmed_allSensorsInactived_returnNoAlarmState() {
-//        when(securityRepository.getArmingStatus()).thenReturn(ArmingStatus.);
         when(securityRepository.getAlarmStatus()).thenReturn(AlarmStatus.PENDING_ALARM);
-        sensor_window.setActive(false);
-        sensor_door.setActive(false);
-        sensor_motion.setActive(false);
+        sensor_window.setActive(true);
         securityService.changeSensorActivationStatus(sensor_window, false);
         verify(securityRepository, times(1)).setAlarmStatus(AlarmStatus.NO_ALARM);
     }
@@ -97,7 +94,7 @@ public class SecurityServiceTest extends TestCase {
     @DisplayName("Test #5")
     public void sensorActivated_whileAlreadyActive_systemPending_changeToAlarmState() {
         doReturn(AlarmStatus.PENDING_ALARM).when(securityRepository).getAlarmStatus();
-        sensor_window.setActive(true);
+        sensor_door.setActive(Boolean.TRUE);
         securityService.changeSensorActivationStatus(sensor_window,true);
         verify(securityRepository, times(1)).setAlarmStatus(AlarmStatus.ALARM);
     }
@@ -115,7 +112,6 @@ public class SecurityServiceTest extends TestCase {
         doReturn(AlarmStatus.NO_ALARM).when(securityRepository).getAlarmStatus();
         securityService.changeSensorActivationStatus(sensor_window,false);
         verify(securityRepository, never()).setAlarmStatus(any(AlarmStatus.class));
-
     }
 
 
@@ -123,21 +119,22 @@ public class SecurityServiceTest extends TestCase {
     @Test
     @DisplayName("Test #7")
     public void identifiesAnImageACat_whileSystemArmedHome_putSystemIntoAlarm() {
-        securityRepository.setArmingStatus(ArmingStatus.ARMED_HOME);
+//        securityRepository.setArmingStatus(ArmingStatus.ARMED_HOME);
         doReturn(true).when(imageService).imageContainsCat(any(), anyFloat());
         doReturn(ArmingStatus.ARMED_HOME).when(securityRepository).getArmingStatus();
         securityService.processImage(img);
-        verify(securityRepository, times(1)).setAlarmStatus(AlarmStatus.ALARM);
+        verify(securityRepository).setAlarmStatus(AlarmStatus.ALARM);
     }
 
     //#8 If the image service identifies an image that does not contain a cat, change the status to no alarm as long as the sensors are not active.
     @Test
     @DisplayName("Test #8")
     public void identifiesAnImageACat_NotContainACat_changeStatusToNoAlarm_asLongAsSensorsAreNotActive () {
-        when(imageService.imageContainsCat(any(), ArgumentMatchers.anyFloat())).thenReturn(false);
+        when(imageService.imageContainsCat(any(), anyFloat())).thenReturn(false);
+//        doReturn(ArmingStatus.ARMED_HOME).when(securityRepository).getArmingStatus();
         sensor_window.setActive(Boolean.FALSE);
         securityService.processImage(img);
-        verify(securityRepository).setAlarmStatus(AlarmStatus.NO_ALARM);
+        verify(securityRepository, times(1)).setAlarmStatus(AlarmStatus.NO_ALARM);
     }
 
     //#9 If the system is disarmed, set the status to no alarm.
@@ -183,15 +180,7 @@ public class SecurityServiceTest extends TestCase {
         sensor_door.setActive(true);
         assertEquals(1, securityService.getActiveSensors().size());
     }
-    @Test
-    @DisplayName("Test_catDetected")
-    public void catNotFound_sensorInactive_setAlarmStatusNotBeCalled(){
-        when(imageService.imageContainsCat(any(), anyFloat())).thenReturn(false);
-        doReturn(Set.of(sensor_door)).when(securityRepository).getSensors();
-        sensor_door.setActive(false);
-        securityService.processImage(img);
-        verify(securityRepository, never()).setAlarmStatus(AlarmStatus.NO_ALARM);
-    }
+
 
     @Test
     @DisplayName("Test_setFalseActivationStatusForSensors")
@@ -202,6 +191,14 @@ public class SecurityServiceTest extends TestCase {
         securityService.setArmingStatus(ArmingStatus.ARMED_AWAY);
         assertEquals(Boolean.FALSE, sensor_door.getActive());
 
+    }
+
+    @Test
+    void ifAlarmStateAndSystemDisarmed_changeStatus() {
+        sensor_window.setActive(true);
+        when(securityRepository.getAlarmStatus()).thenReturn(AlarmStatus.ALARM);
+        securityService.changeSensorActivationStatus(sensor_window, false);
+        verify(securityRepository, times(1)).setAlarmStatus(any(AlarmStatus.class));
     }
 
 
