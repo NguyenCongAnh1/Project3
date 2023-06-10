@@ -24,7 +24,7 @@
     </properties>
 
     <dependencies>
-        <!-- add your dependencies here! -->
+<!--        // add your dependencies here! -->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
@@ -85,7 +85,7 @@
                     <version>3.1.2</version>
                     <configuration>
                         <argLine>
-                            --add-opens security/security.service=ALL-UNNAMED
+                            --add-opens com.udacity.catpoint/com.udacity.catpoint.service=ALL-UNNAMED
                         </argLine>
                     </configuration>
 
